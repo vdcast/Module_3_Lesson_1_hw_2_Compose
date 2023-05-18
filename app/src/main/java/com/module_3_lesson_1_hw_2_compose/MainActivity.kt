@@ -121,18 +121,6 @@ class MainActivity : ComponentActivity() {
                                             )
                                             updateTasksState()
                                         }
-//                                        runBlocking {
-//                                            launch(Dispatchers.IO) {
-//                                                saveFromEdit(
-//                                                    pet.id,
-//                                                    textFieldValueNameState.value,
-//                                                    textFieldValueTypeState.value,
-//                                                    textFieldValueHeightState.value,
-//                                                    textFieldValueWeightState.value
-//                                                )
-//                                                updateTasksState()
-//                                            }
-//                                        }
                                     } else {
                                         isEditingState.value = true
                                     }
@@ -277,11 +265,9 @@ class MainActivity : ComponentActivity() {
 
                     Button(
                         onClick = {
-                            runBlocking {
-                                launch(Dispatchers.IO) {
-                                    addNewPetFromButton()
-                                    updateTasksState()
-                                }
+                            lifecycleScope.launch(Dispatchers.IO){
+                                addNewPetFromButton()
+                                updateTasksState()
                             }
                         },
                         modifier = Modifier
