@@ -18,6 +18,9 @@ public interface PetDao {
     @Query("SELECt * FROM Pet WHERE id = :id")
     Pet getById(int id);
 
+    @Query("SELECt * FROM Pet WHERE name = :name")
+    Pet getByName(String name);
+
     @Insert
     void insert(Pet pet);
 

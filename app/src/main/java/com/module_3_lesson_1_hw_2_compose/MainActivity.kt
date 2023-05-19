@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +47,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private val petsState =  mutableStateOf(emptyList<Pet>())
+    private val textFieldValueSearchBarState = mutableStateOf("Search")
 
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -84,10 +86,30 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    TextField(
+                        value = textFieldValueSearchBarState.value,
+                        onValueChange = {newValue ->
+                            if (newValue === ""){
+                                lifecycleScope.launch(Dispatchers.IO){
+                                    updateTasksState()
+                                }
+                            } else {
+                                lifecycleScope.launch(Dispatchers.IO){
+                                    searchByName(newValue)
+                                }
+                            }
 
+
+                            textFieldValueSearchBarState.value = newValue
+
+                        }
+                    )
+                    
                     LazyColumn(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 72.dp)
                     ) {
                         itemsIndexed(petsState.value){ index, pet ->
 
@@ -296,7 +318,6 @@ class MainActivity : ComponentActivity() {
     private fun addNewPetFromButton() {
         val db = App.instance.database
         val petDao = db.petDao
-        val pets = petDao.allPet
 
         val lastPet = petDao.allPet.lastOrNull()
         val newId = lastPet?.id?.plus(1) ?: 1
@@ -326,8 +347,20 @@ class MainActivity : ComponentActivity() {
         itemById.type = newType
         itemById.height = newHeight
         itemById.weight = newWeight
-        petDao.update(itemById)
 
+        petDao.update(itemById)
+    }
+
+    private fun searchByName(nameFromSearchBar: String) {
+        val db = App.instance.database
+        val petDao = db.petDao
+        val itemByName = petDao.getByName(nameFromSearchBar)
+
+        if (itemByName != null) {
+            petsState.value = listOf(itemByName)
+        } else {
+
+        }
     }
 
 }
