@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,28 +13,42 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -47,7 +62,8 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private val petsState =  mutableStateOf(emptyList<Pet>())
-    private val textFieldValueSearchBarState = mutableStateOf("Search")
+    private val textFieldValueLeftSearchBarState = mutableStateOf("Search")
+    private val textFieldValueRightSearchBarState = mutableStateOf("Search")
 
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +71,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Module_3_Lesson_1_hw_2_ComposeTheme {
+
+
+                val focusManager = LocalFocusManager.current
 
 
                 LaunchedEffect(Unit) {
@@ -86,24 +105,62 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    TextField(
-                        value = textFieldValueSearchBarState.value,
-                        onValueChange = {newValue ->
-                            if (newValue === ""){
-                                lifecycleScope.launch(Dispatchers.IO){
-                                    updateTasksState()
+                    Row(){
+                        TextField(
+                            value = textFieldValueLeftSearchBarState.value,
+                            onValueChange = {newValue ->
+
+                                textFieldValueLeftSearchBarState.value = newValue
+
+                                if (newValue == ""){
+                                    lifecycleScope.launch(Dispatchers.IO){
+                                        updateTasksState()
+                                    }
+                                } else {
+                                    lifecycleScope.launch(Dispatchers.IO){
+                                        searchByName(textFieldValueLeftSearchBarState.value)
+                                    }
                                 }
-                            } else {
-                                lifecycleScope.launch(Dispatchers.IO){
-                                    searchByName(newValue)
+                            },
+                            maxLines = 1,
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
                                 }
-                            }
+                            ),
+                        )
+                        TextField(
+                            value = textFieldValueRightSearchBarState.value,
+                            onValueChange = {newValue ->
 
+                                textFieldValueRightSearchBarState.value = newValue
 
-                            textFieldValueSearchBarState.value = newValue
+                                if (newValue == ""){
+                                    lifecycleScope.launch(Dispatchers.IO){
+                                        updateTasksState()
+                                    }
+                                } else {
+                                    lifecycleScope.launch(Dispatchers.IO){
+                                        searchByType(textFieldValueRightSearchBarState.value)
+                                    }
+                                }
+                            },
+                            maxLines = 1,
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                }
+                            ),
+                        )
+                    }
 
-                        }
-                    )
                     
                     LazyColumn(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -113,13 +170,17 @@ class MainActivity : ComponentActivity() {
                     ) {
                         itemsIndexed(petsState.value){ index, pet ->
 
-                            val textFieldValueTypeState = remember { mutableStateOf(pet.type) }
                             val textFieldValueNameState = remember { mutableStateOf(pet.name) }
                             val textFieldValueHeightState = remember { mutableStateOf(pet.height) }
                             val textFieldValueWeightState = remember { mutableStateOf(pet.weight) }
                             val isEditingState = remember { mutableStateOf(false) }
 
-                            val focusManager = LocalFocusManager.current
+
+                            val petsTypesList = listOf(
+                                "Dog", "Cat", "GOAT", "Rabbit", "Chicken", "Cow",
+                                "Hamster", "Parrot", "Turtle", "Guinea Pig", "Fish",
+                            )
+                            var selectedItemType by rememberSaveable() { mutableStateOf(pet.type) }
 
                             Card(
                                 modifier = Modifier
@@ -137,7 +198,7 @@ class MainActivity : ComponentActivity() {
                                             saveFromEdit(
                                                 pet.id,
                                                 textFieldValueNameState.value,
-                                                textFieldValueTypeState.value,
+                                                selectedItemType,
                                                 textFieldValueHeightState.value,
                                                 textFieldValueWeightState.value
                                             )
@@ -176,23 +237,21 @@ class MainActivity : ComponentActivity() {
                                                 modifier = Modifier,
                                                 textStyle = TextStyle(fontSize = 16.sp)
                                             )
-                                            TextField(
-                                                value = textFieldValueTypeState.value,
-                                                onValueChange = {newValue ->
-                                                    textFieldValueTypeState.value = newValue
 
-                                                },
-                                                keyboardOptions = KeyboardOptions(
-                                                    imeAction = ImeAction.Done
-                                                ),
-                                                keyboardActions = KeyboardActions(
-                                                    onDone = {
-                                                        focusManager.clearFocus()
-                                                    }
-                                                ),
-                                                modifier = Modifier,
-                                                textStyle = TextStyle(fontSize = 16.sp)
+
+
+
+
+
+                                            Spinner(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                petsTypesList,
+                                                selectedItemType,
+                                                onItemTypeSelected = { selectedItemType = it }
                                             )
+
+
+
                                             TextField(
                                                 value = textFieldValueHeightState.value,
                                                 onValueChange = {newValue ->
@@ -228,8 +287,28 @@ class MainActivity : ComponentActivity() {
                                                 textStyle = TextStyle(fontSize = 16.sp)
                                             )
                                         }
-                                        Column(){
-                                            //Images Done and Delete
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ){
+                                            Image(
+                                                Icons.Default.Delete,
+                                                contentDescription = "delete",
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .offset(x = (32).dp, y = (0).dp)
+                                                    .clickable {
+                                                        isEditingState.value = false
+
+                                                        runBlocking {
+                                                            launch(Dispatchers.IO) {
+
+                                                                deleteTask(pet.id)
+                                                                updateTasksState()
+                                                            }
+                                                        }
+                                                    }
+                                            )
                                         }
 
                                     } else {
@@ -351,20 +430,87 @@ class MainActivity : ComponentActivity() {
         petDao.update(itemById)
     }
 
-    private fun searchByName(nameFromSearchBar: String) {
+    private fun deleteTask(idItemClicked: Int) {
+        var db = App.instance.database
+        var petDao = db.petDao
+
+        val itemById = petDao.getById(idItemClicked)
+
+        petDao.delete(itemById)
+
+    }
+
+    private fun searchByName(textFromSearchBar: String) {
         val db = App.instance.database
         val petDao = db.petDao
-        val itemByName = petDao.getByName(nameFromSearchBar)
+        val itemsByName = petDao.getAllByName(textFromSearchBar)
 
-        if (itemByName != null) {
-            petsState.value = listOf(itemByName)
-        } else {
+        if (itemsByName != null) {
+            petsState.value = itemsByName
+        }
+    }
 
+    private fun searchByType(textFromSearchBar: String) {
+        val db = App.instance.database
+        val petDao = db.petDao
+        val itemsByType = petDao.getAllByType(textFromSearchBar)
+
+        if (itemsByType != null) {
+            petsState.value = itemsByType
+        }
+    }
+}
+
+@Composable
+fun Spinner(
+    modifier: Modifier,
+    itemList: List<String>,
+    selectedItemType: String,
+    onItemTypeSelected: (selectedItem: String) -> Unit
+){
+    var tempSelectedItem = selectedItemType
+
+    if (selectedItemType.isBlank() && itemList.isNotEmpty()) {
+        onItemTypeSelected(itemList[0])
+        tempSelectedItem = itemList[0]
+    }
+
+    var expandedType by rememberSaveable() { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { expandedType = true },
+        modifier = modifier,
+        enabled = itemList.isNotEmpty()
+    ) {
+        Text(
+            text = tempSelectedItem,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            modifier = Modifier.weight(1f)
+        )
+
+        Icon(
+            if (expandedType) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = null
+        )
+
+        DropdownMenu(
+            expanded = expandedType,
+            onDismissRequest = { expandedType = false }
+        ) {
+            itemList.forEach {
+                DropdownMenuItem(
+                    text = { Text(text = it) },
+                    onClick = {
+                        expandedType = false
+                        onItemTypeSelected(it)
+                    }
+                )
+            }
         }
     }
 
 }
-
 
 
 
